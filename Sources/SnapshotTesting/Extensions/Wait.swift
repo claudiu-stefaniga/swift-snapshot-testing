@@ -1,5 +1,4 @@
 import Foundation
-import XCTest
 
 extension Snapshotting {
   /// Transforms an existing snapshot strategy into one that waits for some amount of time before
@@ -19,11 +18,7 @@ extension Snapshotting {
       diffing: strategy.diffing,
       asyncSnapshot: { value in
         Async { callback in
-          let expectation = XCTestExpectation(description: "Wait")
-          DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
-            expectation.fulfill()
-          }
-          _ = XCTWaiter.wait(for: [expectation], timeout: duration + 1)
+          RunLoop.current.run(until: Date(timeIntervalSinceNow: duration))
           strategy.snapshot(value).run(callback)
         }
       })
