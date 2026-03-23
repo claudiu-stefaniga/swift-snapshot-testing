@@ -359,14 +359,7 @@ public func verifySnapshot<Value, Format>(
       var optionalDiffable: Format?
       let snapshotValue = try value()
       if delay > 0 {
-        // Run the delay on a background thread so the main thread stays free
-        // to perform layout passes and run loop work while we wait.
-        DispatchQueue.global().async {
-          let delayExpectation = XCTestExpectation(description: "Delay")
-          DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-            delayExpectation.fulfill()
-          }
-          _ = XCTWaiter.wait(for: [delayExpectation], timeout: delay + 1)
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
           snapshotting.snapshot(snapshotValue).run { b in
             optionalDiffable = b
             tookSnapshot.fulfill()
