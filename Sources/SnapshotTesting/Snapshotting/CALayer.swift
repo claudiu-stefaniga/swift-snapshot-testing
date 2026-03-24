@@ -25,18 +25,26 @@
     ///     match. 98-99% mimics
     ///     [the precision](http://zschuessler.github.io/DeltaE/learn/#toc-defining-delta-e) of the
     ///     human eye.
-    public static func image(precision: Float, perceptualPrecision: Float = 1) -> Snapshotting {
+    ///   - renderingDelay: The amount of time to wait before rendering the layer, giving async
+    ///     content (images, animations, etc.) time to finish loading.
+    public static func image(
+      precision: Float, perceptualPrecision: Float = 1, renderingDelay: TimeInterval = 0
+    ) -> Snapshotting {
       return SimplySnapshotting.image(
         precision: precision, perceptualPrecision: perceptualPrecision
-      ).pullback { layer in
-        let image = NSImage(size: layer.bounds.size)
-        image.lockFocus()
-        let context = NSGraphicsContext.current!.cgContext
-        layer.setNeedsLayout()
-        layer.layoutIfNeeded()
-        layer.render(in: context)
-        image.unlockFocus()
-        return image
+      ).asyncPullback { layer in
+        Async { callback in
+          DispatchQueue.main.asyncAfter(deadline: .now() + renderingDelay) {
+            let image = NSImage(size: layer.bounds.size)
+            image.lockFocus()
+            let context = NSGraphicsContext.current!.cgContext
+            layer.setNeedsLayout()
+            layer.layoutIfNeeded()
+            layer.render(in: context)
+            image.unlockFocus()
+            callback(image)
+          }
+        }
       }
     }
   }
@@ -58,18 +66,28 @@
     ///     [the precision](http://zschuessler.github.io/DeltaE/learn/#toc-defining-delta-e) of the
     ///     human eye.
     ///   - traits: A trait collection override.
+    ///   - renderingDelay: The amount of time to wait before rendering the layer, giving async
+    ///     content (images, animations, etc.) time to finish loading.
     public static func image(
-      precision: Float = 1, perceptualPrecision: Float = 1, traits: UITraitCollection = .init()
+      precision: Float = 1,
+      perceptualPrecision: Float = 1,
+      traits: UITraitCollection = .init(),
+      renderingDelay: TimeInterval = 0
     )
       -> Snapshotting
     {
       return SimplySnapshotting.image(
         precision: precision, perceptualPrecision: perceptualPrecision, scale: traits.displayScale
-      ).pullback { layer in
-        renderer(bounds: layer.bounds, for: traits).image { ctx in
-          layer.setNeedsLayout()
-          layer.layoutIfNeeded()
-          layer.render(in: ctx.cgContext)
+      ).asyncPullback { layer in
+        Async { callback in
+          DispatchQueue.main.asyncAfter(deadline: .now() + renderingDelay) {
+            let image = renderer(bounds: layer.bounds, for: traits).image { ctx in
+              layer.setNeedsLayout()
+              layer.layoutIfNeeded()
+              layer.render(in: ctx.cgContext)
+            }
+            callback(image)
+          }
         }
       }
     }
