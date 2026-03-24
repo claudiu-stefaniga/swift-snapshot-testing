@@ -36,12 +36,15 @@
       ///     human eye.
       ///   - layout: A view layout override.
       ///   - traits: A trait collection override.
+      ///   - renderingDelay: The amount of time to wait before rendering the view, giving async
+      ///     content (images, animations, network calls, etc.) time to finish loading.
       public static func image(
         drawHierarchyInKeyWindow: Bool = false,
         precision: Float = 1,
         perceptualPrecision: Float = 1,
         layout: SwiftUISnapshotLayout = .sizeThatFits,
-        traits: UITraitCollection = .init()
+        traits: UITraitCollection = .init(),
+        renderingDelay: TimeInterval = 0
       )
         -> Snapshotting
       {
@@ -79,13 +82,18 @@
             controller = hostingController
           }
 
-          return snapshotView(
-            config: config,
-            drawHierarchyInKeyWindow: drawHierarchyInKeyWindow,
-            traits: traits,
-            view: controller.view,
-            viewController: controller
-          )
+          return Async { callback in
+            let snapshot = snapshotView(
+              config: config,
+              drawHierarchyInKeyWindow: drawHierarchyInKeyWindow,
+              traits: traits,
+              view: controller.view,
+              viewController: controller
+            )
+            DispatchQueue.main.asyncAfter(deadline: .now() + renderingDelay) {
+              snapshot.run(callback)
+            }
+          }
         }
       }
     }
